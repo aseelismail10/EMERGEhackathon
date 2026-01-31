@@ -1,0 +1,80 @@
+import pandas as pd
+
+pd.set_option("display.max_columns", None)
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import requests
+
+url = (
+    "https://api.globe.gov/search/v1/measurement/protocol/"
+    "measureddate/country/?protocols=mosquito_habitat_mapper"
+    "&startdate=2015-01-01&enddate=2026-01-01"
+    "&countrycode=IND&geojson=TRUE&sample=FALSE"
+)
+
+response = requests.get(url)
+geojson_data = response.json()
+
+data = gpd.GeoDataFrame.from_features(geojson_data["features"])
+data = data.set_crs(4326)
+
+print("Mosquito points:", len(data))
+
+
+countries = gpd.read_file(
+    "https://github.com/geo-di-lab/emerge-lessons/raw/refs/heads/main/docs/data/world_countries.zip"
+)[["COUNTRY", "geometry"]].to_crs(4326)
+
+india = countries[countries["COUNTRY"] == "India"]
+
+india_states = gpd.read_file("in.json").to_crs(4326)
+print("India states columns:", india_states.columns)
+
+# Rename state column (SimpleMaps uses 'name')
+india_states = india_states.rename(columns={"name": "state"})
+india_states["state"] = india_states["state"].str.upper().str.strip()
+
+disease = pd.read_csv("ncvbdc_dengue_data.csv", header=None)
+
+disease.columns = disease.iloc[0]
+disease = disease.iloc[1:].reset_index(drop=True)
+
+print("Disease columns after fixing headers:", disease.columns.tolist())
+
+disease = disease.rename(columns={
+    "Affected States/UTs": "state",
+    "2025": "cases"
+})
+
+disease["1"] = disease["1"].astype(str).str.upper().str.strip()
+disease["6"] = pd.to_numeric(disease["6"], errors="coerce")
+
+print(disease[["1", "6"]].head())
+
+
+india_states = india_states.merge(
+    disease,
+    left_on="state",  # from india_states
+    right_on="1",  # from disease CSV
+    how="left"
+)
+
+print(india_states[["1", "6"]].head())
+
+
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Disease choropleth (background)
+india_states.plot(
+    column="6",  # dengue case counts
+    cmap="Reds",
+    legend=True,
+    edgecolor="black",
+    ax=ax
+)
+
+
+ax.set_axis_off()
+plt.title("Dengue Cases by State (2025) with Mosquito Observations")
+plt.show()
