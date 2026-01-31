@@ -7,7 +7,7 @@ from datetime import date                     # For formatting dates
 from PIL import Image                         # For getting and displaying images from links
 import requests                               # For getting information from links
 from io import BytesIO                        # For working with types of input and output
-
+#Darshini map 1
 url = "https://api.globe.gov/search/v1/measurement/protocol/measureddate/country/?protocols=mosquito_habitat_mapper&startdate=2015-01-01&enddate=2026-01-01&countrycode=IND&geojson=TRUE&sample=FALSE"
 
 response = requests.get(url)
@@ -37,16 +37,38 @@ india = countries[countries["COUNTRY"] == "India"]
 
 fig, ax = plt.subplots(figsize=(10,8))
 
-# Plot India boundary
 india.plot(ax=ax, color="lightgray", edgecolor="black")
 
-# Plot mosquito points
 data.plot(ax=ax, color="red", markersize=40)
 
-# Force zoom to India
 ax.set_xlim(india.total_bounds[0], india.total_bounds[2])
 ax.set_ylim(india.total_bounds[1], india.total_bounds[3])
 
 plt.title("Mosquito Habitat Mapper Observations in India (2015–2026)")
 plt.show()
+
+#Darshini map 2
+path = "dengue_full_table.xlsx"   # or the full path if needed
+df = pd.read_excel(path)
+
+year = 2024         # 2021, 2022, 2023, 2024, 2025
+metric = "C"        # "C" = cases, "D" = deaths
+top_n = 15          # show top N states (set to None to show all)
+
+col = f"{year}_{metric}"
+
+plot_df = df[["State/UT", col]].copy()
+plot_df = plot_df.sort_values(col, ascending=False)
+
+if top_n is not None:
+    plot_df = plot_df.head(top_n)
+
+plt.figure(figsize=(12, 6))
+plt.bar(plot_df["State/UT"], plot_df[col])
+plt.xticks(rotation=45, ha="right")
+plt.ylabel("Cases" if metric == "C" else "Deaths")
+plt.title(f"Dengue {'Cases' if metric == 'C' else 'Deaths'} by State/UT ({year})")
+plt.tight_layout()
+plt.show()
+
 
